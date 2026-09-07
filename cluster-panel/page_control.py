@@ -15,8 +15,8 @@ if st.user.email != OWNER_EMAIL:
 
 st.title("Cluster Control")
 
-st.link_button("Connect to Mikel via SSH", "clusterssh://mikel-linux/")
-st.caption("Opens a real PowerShell window on your own machine, already connected to Mikel.")
+st.link_button("Connect to Aorus via SSH", "clusterssh://aorus/")
+st.caption("Opens a real PowerShell window on your own machine, already connected to Aorus.")
 
 st.divider()
 

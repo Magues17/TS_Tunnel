@@ -6,7 +6,7 @@ FLEET = {
     "macbook-air": {"host": "michaels-macbook-air.tailf8336a.ts.net", "user": "michaelcampbell", "os": "macos"},
     "karenold": {"host": "karenold.tailf8336a.ts.net", "user": "karenold", "os": "linux"},
     "turion": {"host": "turion.tailf8336a.ts.net", "user": "mikel", "os": "linux"},
-    "mikel": {"host": "localhost", "user": "mikel", "os": "linux"},
+    "aorus": {"host": "localhost", "user": "mikel", "os": "linux"},
 }
 
 PRESETS = {
