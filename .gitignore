@@ -7,3 +7,5 @@ cluster_key
 cluster_key.pub
 panel_key
 panel_key.pub
+WIFI-NETWORKS.local.md
+docker/databases/.env

@@ -52,6 +52,15 @@ SSH aliases are defined in `~/.ssh/config` on MSI, all using the dedicated `~/.s
 - **Both nodes must use `--node-ip` pinned to their Tailscale IP** (`/etc/rancher/k3s/config.yaml`), not a local LAN address — otherwise the cluster breaks every time a node changes physical networks (see Gotchas). Turion additionally needs `flannel-iface: tailscale0` so the CNI layer looks on the right interface.
 - Intended workload: parallel RL rollout workers for the Wizard project (`THE_WIZARD` repo) — CPU-bound environment simulation distributes well across weak nodes; GPU-bound training stays on whichever machine has the NVIDIA card.
 
+## Dev databases (Aorus)
+MariaDB and Redis run as Docker containers on Aorus, backing local Laravel/dev workloads previously hosted on MSI. First Docker workload on this machine — everything else here runs natively via systemd.
+
+- Compose file: `docker/databases/docker-compose.yml`, credentials in `docker/databases/.env` (gitignored, local only)
+- MariaDB 12.3 (matches MSI's native version) on port 3306, Redis 7 on port 6379
+- Both bound to Aorus's **Tailscale IP only** (`100.124.80.80`), not the LAN — reachable from any machine on the tailnet, not exposed locally
+- Redis data persisted at `/mnt/4klabs-pool/databases/redis` on the storage pool. MariaDB data lives at `/var/lib/4klabs-databases/mariadb` on the local OS disk instead — mergerfs (FUSE) hangs MariaDB/InnoDB during init (confirmed via wchan=`request_wait_answer`, a FUSE-wait kernel state), a known class of incompatibility between FUSE union filesystems and database engines that rely on mmap/flock. Redis's simpler I/O pattern works fine on the pool.
+- Manage with `cd ~/TS_Tunnel/docker/databases && sudo docker compose [up -d|down|logs]`
+
 ## Certificates
 Local HTTPS everywhere uses **mkcert**. The CA is per-machine (not portable) — when Turion died and came back, and when DaddyPC was wiped to become Aorus, each got a **fresh CA**, which means browsers need to re-trust the new root cert each time this happens. Root certs get distributed via `certutil -user -addstore -f Root` on Windows and manually via Keychain Access on macOS (cannot be done over SSH — needs a GUI session).
 
@@ -63,6 +72,7 @@ Local HTTPS everywhere uses **mkcert**. The CA is per-machine (not portable) —
 4. **Windows persistent drive mappings (`net use ... /persistent:yes`) only reconnect at the *next* interactive logon**, not live in the session that created them, and **never appear at all if created inside an elevated ("Run as Administrator") shell** — elevated processes get a different, invisible mapping bucket.
 5. **k3s must be told its node's Tailscale IP explicitly** (`node-ip` + `flannel-iface` in `/etc/rancher/k3s/config.yaml`) if a node might ever change physical networks — otherwise it crash-loops with `failed to find interface with specified node ip`, or worse, silently stays `Ready` while flapping between its LAN and IPv6 addresses (`NodeIPs changed for the node`). **Verify this file exists on every agent node, not just the server** — karenold ran for weeks with no `config.yaml` at all (the agent install never created one), so it just used whatever DHCP handed it and broke every time it moved networks. Check with `cat /etc/rancher/k3s/config.yaml` on each node after any k3s install/upgrade.
 6. **`pkill -f` can kill its own shell** if the pattern you're searching for happens to appear in the command line that invoked `pkill` itself. Match on process name (`pkill -9 <name>`) instead of a broad `-f` pattern when unsure.
+7. **Don't put database engines (MariaDB/MySQL/Postgres) on the mergerfs pool.** FUSE-based union filesystems and InnoDB-style storage engines don't mix — MariaDB hung indefinitely on startup with its process stuck in the kernel wait state `request_wait_answer` (a FUSE-specific block), even though plain file read/write/delete on the same mount worked fine. Redis was fine there (simpler I/O pattern). Give databases a real local-disk path instead.
 7. **`gsettings`/GNOME extension config changes made over SSH need the right `DBUS_SESSION_BUS_ADDRESS`**, pulled from an active `gnome-shell` process's environment (`/proc/<pid>/environ`) — there's no session context otherwise. Newly-installed GNOME extensions also don't activate until a full logout/login on Wayland.
 
 ## Pending / next steps
